@@ -5,13 +5,15 @@
  * 
  * Provides client-side runtime configuration for the SpendWise application.
  * 
- * LOCAL DEVELOPMENT:
- * - Default setting points to the local Express backend API: "http://localhost:5000/api".
+ * PRODUCTION DEPLOYMENT (Render):
+ * - Deployed Render Backend API URL: "https://spendwise-jq6f.onrender.com/api"
  * 
- * PRODUCTION DEPLOYMENT:
- * - Before deploying to production (e.g. Netlify, Vercel, GitHub Pages, AWS S3/CloudFront):
- *   Change API_URL to your deployed HTTPS backend API URL:
- *   Example: API_URL: "https://spendwise-api.onrender.com/api"
+ * LOCAL DEVELOPMENT:
+ * - Local Development Backend API URL: "http://localhost:5000/api"
+ * 
+ * RUNTIME BEHAVIOR:
+ * - Production: Automatically targets the Render backend when deployed (e.g. Vercel).
+ * - Development: Preserves local development backend when running on localhost / 127.0.0.1.
  * 
  * SECURITY RULES:
  * - In production, API_URL MUST use HTTPS (plain HTTP is only permitted for localhost/127.0.0.1).
@@ -20,7 +22,24 @@
  * ==============================================================================
  */
 
-window.SPENDWISE_CONFIG = {
-  API_URL: "http://localhost:5000/api"
-};
+// Detect whether the client is running in a local development environment
+const isLocalEnv = typeof window !== 'undefined' && Boolean(
+  window.location && (
+    window.location.hostname === 'localhost' ||
+    window.location.hostname === '127.0.0.1' ||
+    window.location.protocol === 'file:'
+  )
+);
 
+window.SPENDWISE_CONFIG = {
+  // Production Render API URL (active when deployed on Vercel or cloud hosts)
+  // Local development URL (preserved when running on localhost / 127.0.0.1)
+  // API_URL: "http://localhost:5000/api"
+  API_URL: isLocalEnv
+    ? "http://localhost:5000/api"
+    : "https://spendwise-jq6f.onrender.com/api",
+
+  // Explicit endpoints preserved for reference and testing
+  PRODUCTION_API_URL: "https://spendwise-jq6f.onrender.com/api",
+  DEVELOPMENT_API_URL: "http://localhost:5000/api"
+};
