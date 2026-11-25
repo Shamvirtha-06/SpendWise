@@ -1,0 +1,1112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <!-- 
+    Content Security Policy (SEC-09 & SEC-FIND-01)
+    Restrictive CSP without unsafe-inline or unsafe-eval scripts.
+    PRODUCTION DEPLOYMENT NOTE:
+    Before deploying to production, add your exact deployed HTTPS backend origin
+    (e.g., https://your-backend-api.onrender.com) to the connect-src directive below.
+  -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' http://localhost:5000 http://127.0.0.1:5000; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self';">
+
+  <title>SpendWise – Personal Expense Tracker</title>
+  
+  <!-- Pre-render theme initialization script to prevent Flash of Unstyled / Wrong Content (FOUC) -->
+  <script src="theme-init.js"></script>
+
+  <!-- Link to external stylesheet -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ==========================================
+       1. NAVIGATION BAR
+       Displays the project logo and brand name & Navigation Menu
+       ========================================== -->
+  <header class="navbar">
+    <div class="nav-container">
+      <div class="logo">
+        <span class="logo-icon">💰</span>
+        <span class="logo-text">Spend<span class="logo-highlight">Wise</span></span>
+      </div>
+      
+      <!-- Navigation Menu: Dashboard, Transactions, Budgets, Reports, Goals -->
+      <nav class="nav-menu">
+        <button type="button" class="nav-link active" data-view="dashboard-view" id="nav-dashboard">
+          📊 Dashboard
+        </button>
+        <button type="button" class="nav-link" data-view="transactions-view" id="nav-transactions">
+          💳 Transactions
+        </button>
+        <button type="button" class="nav-link" data-view="budgets-view" id="nav-budgets">
+          🎯 Budgets
+        </button>
+        <button type="button" class="nav-link" data-view="reports-view" id="nav-reports">
+          📈 Reports
+        </button>
+        <button type="button" class="nav-link" data-view="goals-view" id="nav-goals">
+          🏆 Savings Goals
+        </button>
+      </nav>
+
+      <!-- User Authentication Controls (Phase 5) & Theme Toggle -->
+      <div class="nav-auth-container" id="nav-auth-container">
+        <!-- Theme Toggle Button (Light / Dark Mode) -->
+        <button type="button" class="btn-theme-toggle" id="theme-toggle-btn" title="Switch to Dark Mode" aria-label="Toggle dark mode">
+          <span class="theme-icon" id="theme-icon">🌙</span>
+        </button>
+
+        <!-- Logged Out State: Login / Register Button -->
+        <div id="auth-logged-out" class="auth-state-box">
+          <button type="button" class="btn-auth-nav" id="open-auth-modal-btn">
+            🔐 Login / Register
+          </button>
+        </div>
+
+        <!-- Logged In State: User Profile Badge & Logout Button -->
+        <div id="auth-logged-in" class="auth-state-box" style="display: none;">
+          <div class="user-profile-badge" id="user-profile-badge" title="Authenticated User">
+            <span class="user-avatar-circle" id="user-avatar-initial">U</span>
+            <span class="user-display-name" id="user-display-name">User</span>
+          </div>
+          <button type="button" class="btn-logout-nav" id="logout-btn" title="Sign out of SpendWise">
+            🚪 Logout
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==========================================
+       2. MAIN CONTENT CONTAINER
+       ========================================== -->
+  <main class="container">
+
+    <!-- Dashboard Heading -->
+    <section class="dashboard-header">
+      <h1>Your Financial Overview</h1>
+      <p class="subtitle">Track, manage, and understand your everyday spending habits.</p>
+    </section>
+
+    <!-- ==========================================
+         3. SUMMARY CARDS
+         Displays quick totals: Balance, Income, Expenses
+         ========================================== -->
+    <section class="summary-cards">
+      <!-- Total Balance Card -->
+      <div class="card balance-card">
+        <div class="card-header">
+          <h3>Total Balance</h3>
+          <span class="card-icon">💳</span>
+        </div>
+        <p class="amount" id="total-balance">₹0.00</p>
+        <span class="card-footer-text">Current net balance</span>
+      </div>
+
+      <!-- Total Income Card -->
+      <div class="card income-card">
+        <div class="card-header">
+          <h3>Total Income</h3>
+          <span class="card-icon">📈</span>
+        </div>
+        <p class="amount income-text" id="total-income">+₹0.00</p>
+        <span class="card-footer-text">Total earnings</span>
+      </div>
+
+      <!-- Total Expenses Card -->
+      <div class="card expense-card">
+        <div class="card-header">
+          <h3>Total Expenses</h3>
+          <span class="card-icon">📉</span>
+        </div>
+        <p class="amount expense-text" id="total-expenses">-₹0.00</p>
+        <span class="card-footer-text">Total spending</span>
+      </div>
+    </section>
+
+    <!-- ==========================================
+         4. MULTI-VIEW SECTIONS
+         View 1: Dashboard View (Default)
+         View 2: Transactions View
+         View 3: Budgets View
+         ========================================== -->
+
+    <!-- ==========================================
+         VIEW 1: DASHBOARD OVERVIEW
+         ========================================== -->
+    <div id="dashboard-view" class="view-section active">
+      <!-- Section Header -->
+      <div class="view-header">
+        <h2>Dashboard Overview</h2>
+        <p class="section-desc">Quick summary of your monthly spending limits and recent activity.</p>
+      </div>
+
+      <!-- Overall Monthly Budget Widget -->
+      <section class="card budget-overview-card">
+        <div class="card-header">
+          <div>
+            <h3>Monthly Budget Status</h3>
+            <span class="card-subtitle-small">Combined monthly spending limit</span>
+          </div>
+          <div id="dash-overall-status-badge">
+            <span class="badge badge-normal">✅ On Track</span>
+          </div>
+        </div>
+
+        <div class="budget-metrics-grid">
+          <div class="budget-metric">
+            <span class="metric-label">Monthly Limit</span>
+            <span class="metric-value" id="dash-overall-limit">₹0.00</span>
+          </div>
+          <div class="budget-metric">
+            <span class="metric-label">Total Spent</span>
+            <span class="metric-value expense-text" id="dash-overall-spent">₹0.00</span>
+          </div>
+          <div class="budget-metric">
+            <span class="metric-label">Remaining</span>
+            <span class="metric-value" id="dash-overall-remaining">₹0.00</span>
+          </div>
+        </div>
+
+        <div class="progress-wrapper">
+          <div class="progress-header">
+            <span class="progress-title">Overall Budget Usage</span>
+            <span class="progress-percent" id="dash-overall-percent">0%</span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-bar progress-normal" id="dash-overall-progress-bar" style="width: 0%;"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Dashboard Split Grid: Category Budgets Glance & Recent Transactions Glance -->
+      <div class="content-grid">
+        <!-- Category Budgets Glance -->
+        <section class="card">
+          <div class="card-header">
+            <h3>Category Budgets</h3>
+            <button type="button" class="link-btn" data-view="budgets-view">
+              Manage Budgets &rarr;
+            </button>
+          </div>
+          <p class="section-desc">Spending breakdown by category.</p>
+          <div id="dash-category-preview-list" class="mini-budgets-list">
+            <!-- Dynamically populated by JS -->
+          </div>
+        </section>
+
+        <!-- Recent Transactions Glance -->
+        <section class="card">
+          <div class="card-header">
+            <h3>Latest Transactions</h3>
+            <button type="button" class="link-btn" data-view="transactions-view">
+              View All &rarr;
+            </button>
+          </div>
+          <p class="section-desc">Your most recent financial entries.</p>
+          <div id="dash-recent-preview-list" class="mini-transactions-list">
+            <!-- Dynamically populated by JS -->
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <!-- ==========================================
+         VIEW 2: TRANSACTIONS MANAGEMENT
+         ========================================== -->
+    <div id="transactions-view" class="view-section" style="display: none;">
+      <!-- Section Header -->
+      <div class="view-header">
+        <h2>Transaction Management</h2>
+        <p class="section-desc">Record, search, filter, and modify your daily expenses and income.</p>
+      </div>
+
+      <div class="content-grid">
+        <!-- Form Section: Add / Edit Transaction -->
+        <section class="card form-section" id="form-container">
+          <h2 id="form-title">Add Transaction</h2>
+          <p class="section-desc" id="form-desc">Record a new income or expense entry.</p>
+
+          <form id="transaction-form">
+            <!-- Transaction Description -->
+            <div class="form-group">
+              <label for="description">Transaction Description</label>
+              <input 
+                type="text" 
+                id="description" 
+                name="description" 
+                placeholder="e.g., Grocery shopping, Monthly salary" 
+                required
+              >
+            </div>
+
+            <!-- Transaction Amount -->
+            <div class="form-group">
+              <label for="amount">Amount (₹)</label>
+              <input 
+                type="number" 
+                id="amount" 
+                name="amount" 
+                placeholder="0.00" 
+                step="0.01" 
+                min="0.01" 
+                required
+              >
+            </div>
+
+            <!-- Transaction Type (Income vs Expense) -->
+            <div class="form-group">
+              <label for="type">Transaction Type</label>
+              <select id="type" name="type" required>
+                <option value="income">Income (+)</option>
+                <option value="expense">Expense (-)</option>
+              </select>
+            </div>
+
+            <!-- Category -->
+            <div class="form-group">
+              <label for="category">Category</label>
+              <select id="category" name="category" required>
+                <option value="Salary / Wages">Salary / Wages</option>
+                <option value="Freelance & Consulting">Freelance & Consulting</option>
+                <option value="Investments & Dividends">Investments & Dividends</option>
+                <option value="Gifts & Grants">Gifts & Grants</option>
+                <option value="Other Income">Other Income</option>
+                <option value="Food & Dining">Food & Dining</option>
+                <option value="Shopping">Shopping</option>
+                <option value="Housing & Rent">Housing & Rent</option>
+                <option value="Transportation">Transportation</option>
+                <option value="Utilities & Bills">Utilities & Bills</option>
+                <option value="Entertainment">Entertainment</option>
+                <option value="Healthcare">Healthcare</option>
+                <option value="Other Expense">Other Expense</option>
+              </select>
+            </div>
+
+            <!-- Date -->
+            <div class="form-group">
+              <label for="date">Date</label>
+              <input 
+                type="date" 
+                id="date" 
+                name="date" 
+                required
+              >
+            </div>
+
+            <!-- Form Action Buttons -->
+            <div class="form-actions">
+              <button type="submit" class="btn-primary" id="add-btn">
+                + Add Transaction
+              </button>
+              <button type="button" class="btn-secondary" id="cancel-edit-btn" style="display: none;">
+                Cancel Edit
+              </button>
+            </div>
+          </form>
+        </section>
+
+        <!-- Transactions List Section: Recent Activity -->
+        <section class="card transactions-section">
+          <div class="transactions-header">
+            <h2>Recent Transactions</h2>
+          </div>
+          <p class="section-desc">Search, filter, sort, and manage your financial records.</p>
+
+          <!-- Search, Filter & Sort Controls -->
+          <div class="tx-controls">
+            <!-- 1. Search by Description -->
+            <div class="search-box">
+              <input 
+                type="text" 
+                id="search-input" 
+                placeholder="🔍 Search transactions by description..." 
+                aria-label="Search transactions by description"
+              >
+            </div>
+
+            <!-- 2. Filters & Sorting Controls -->
+            <div class="filter-sort-bar">
+              <!-- Transaction Type Filter -->
+              <div class="control-group">
+                <label for="filter-type">Type:</label>
+                <select id="filter-type" aria-label="Filter by transaction type">
+                  <option value="all">All Types</option>
+                  <option value="income">Income (+)</option>
+                  <option value="expense">Expense (-)</option>
+                </select>
+              </div>
+
+              <!-- Category Filter -->
+              <div class="control-group">
+                <label for="filter-category">Category:</label>
+                <select id="filter-category" aria-label="Filter by category">
+                  <option value="all">All Categories</option>
+                  <option value="Salary / Wages">Salary / Wages</option>
+                  <option value="Freelance & Consulting">Freelance & Consulting</option>
+                  <option value="Investments & Dividends">Investments & Dividends</option>
+                  <option value="Gifts & Grants">Gifts & Grants</option>
+                  <option value="Other Income">Other Income</option>
+                  <option value="Food & Dining">Food & Dining</option>
+                  <option value="Shopping">Shopping</option>
+                  <option value="Housing & Rent">Housing & Rent</option>
+                  <option value="Transportation">Transportation</option>
+                  <option value="Utilities & Bills">Utilities & Bills</option>
+                  <option value="Entertainment">Entertainment</option>
+                  <option value="Healthcare">Healthcare</option>
+                  <option value="Other Expense">Other Expense</option>
+                </select>
+              </div>
+
+              <!-- Sort By -->
+              <div class="control-group">
+                <label for="sort-by">Sort By:</label>
+                <select id="sort-by" aria-label="Sort transactions">
+                  <option value="newest">Newest First</option>
+                  <option value="oldest">Oldest First</option>
+                  <option value="highest">Highest Amount</option>
+                  <option value="lowest">Lowest Amount</option>
+                </select>
+              </div>
+
+              <!-- Reset Filters Button -->
+              <button type="button" id="reset-filters-btn" class="btn-reset" title="Reset all search and filters">
+                Reset Filters
+              </button>
+            </div>
+          </div>
+
+          <!-- Dynamic List of Transactions (filled by JavaScript) -->
+          <ul id="transaction-list" class="transaction-list">
+            <!-- Dynamically rendered by JavaScript -->
+          </ul>
+        </section>
+      </div>
+    </div>
+
+    <!-- ==========================================
+         VIEW 3: BUDGET MANAGEMENT
+         ========================================== -->
+    <div id="budgets-view" class="view-section" style="display: none;">
+      <!-- Section Header -->
+      <div class="view-header">
+        <h2>Budget Management</h2>
+        <p class="section-desc">Plan, track, and control your monthly spending with live budget alerts.</p>
+      </div>
+
+      <!-- 1. Overall Monthly Budget Configuration Card -->
+      <section class="card budget-management-overview">
+        <div class="card-header">
+          <div>
+            <h3>Monthly Overall Budget</h3>
+            <span class="card-subtitle-small">Set a global cap for all monthly expenses</span>
+          </div>
+          <div id="budget-view-status-badge">
+            <span class="badge badge-normal">✅ On Track</span>
+          </div>
+        </div>
+
+        <!-- Form to set/update overall monthly budget -->
+        <form id="overall-budget-form" class="inline-budget-setter">
+          <div class="form-group inline-group">
+            <label for="overall-budget-input">Set Monthly Overall Limit (₹):</label>
+            <div class="inline-input-wrapper">
+              <input 
+                type="number" 
+                id="overall-budget-input" 
+                placeholder="e.g., 30000" 
+                min="0.01" 
+                step="0.01" 
+                required
+              >
+              <button type="submit" class="btn-primary-sm" id="save-overall-budget-btn">
+                💾 Save Budget
+              </button>
+            </div>
+          </div>
+        </form>
+
+        <!-- Live Metrics -->
+        <div class="budget-metrics-grid">
+          <div class="budget-metric">
+            <span class="metric-label">Overall Limit</span>
+            <span class="metric-value" id="budget-view-limit">₹0.00</span>
+          </div>
+          <div class="budget-metric">
+            <span class="metric-label">Total Expenses Spent</span>
+            <span class="metric-value expense-text" id="budget-view-spent">₹0.00</span>
+          </div>
+          <div class="budget-metric">
+            <span class="metric-label">Remaining Budget</span>
+            <span class="metric-value" id="budget-view-remaining">₹0.00</span>
+          </div>
+        </div>
+
+        <!-- Progress Bar -->
+        <div class="progress-wrapper">
+          <div class="progress-header">
+            <span class="progress-title">Overall Spending Progress</span>
+            <span class="progress-percent" id="budget-view-percent">0%</span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-bar progress-normal" id="budget-view-progress-bar" style="width: 0%;"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. Category Budgets Grid -->
+      <div class="content-grid">
+        <!-- Form Section: Add / Edit Category Budget -->
+        <section class="card form-section" id="category-budget-form-container">
+          <h2 id="category-budget-form-title">Add Category Budget</h2>
+          <p class="section-desc">Assign specific spending targets to expense categories.</p>
+
+          <form id="category-budget-form">
+            <!-- Category Selection -->
+            <div class="form-group">
+              <label for="category-budget-select">Expense Category</label>
+              <select id="category-budget-select" required>
+                <option value="Food & Dining">🍔 Food & Dining</option>
+                <option value="Shopping">🛍️ Shopping</option>
+                <option value="Housing & Rent">🏠 Housing & Rent</option>
+                <option value="Transportation">🚗 Transportation</option>
+                <option value="Utilities & Bills">⚡ Utilities & Bills</option>
+                <option value="Entertainment">🎬 Entertainment</option>
+                <option value="Healthcare">💊 Healthcare</option>
+                <option value="Other Expense">📦 Other Expense</option>
+              </select>
+            </div>
+
+            <!-- Budget Limit Amount -->
+            <div class="form-group">
+              <label for="category-budget-amount">Monthly Budget Limit (₹)</label>
+              <input 
+                type="number" 
+                id="category-budget-amount" 
+                placeholder="e.g., 5000" 
+                min="0.01" 
+                step="0.01" 
+                required
+              >
+            </div>
+
+            <!-- Form Action Buttons -->
+            <div class="form-actions">
+              <button type="submit" class="btn-primary" id="save-category-budget-btn">
+                + Set Category Budget
+              </button>
+              <button type="button" class="btn-secondary" id="cancel-category-budget-btn" style="display: none;">
+                Cancel Edit
+              </button>
+            </div>
+          </form>
+        </section>
+
+        <!-- Category Budgets List Container -->
+        <section class="card">
+          <div class="card-header">
+            <h2>Category Budgets Status</h2>
+          </div>
+          <p class="section-desc">Real-time tracking with 80% warning and exceeded-limit alerts.</p>
+
+          <div id="category-budgets-list" class="category-budgets-container">
+            <!-- Dynamically populated by JS -->
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <!-- ==========================================
+         VIEW 4: REPORTS & ANALYTICS
+         ========================================== -->
+    <div id="reports-view" class="view-section" style="display: none;">
+      <!-- Section Header with Period Filter Controls -->
+      <div class="view-header reports-header-row">
+        <div>
+          <h2>Financial Reports & Analytics</h2>
+          <p class="section-desc">Visual trends, cash flow comparisons, and actionable financial insights.</p>
+        </div>
+
+        <!-- Period Filter Button Group (Weekly, Monthly, Yearly, All-time) -->
+        <div class="period-filter-group" role="group" aria-label="Report Period Filter">
+          <button type="button" class="period-btn" data-period="week">This Week</button>
+          <button type="button" class="period-btn active" data-period="month">This Month</button>
+          <button type="button" class="period-btn" data-period="year">This Year</button>
+          <button type="button" class="period-btn" data-period="all">All Time</button>
+        </div>
+      </div>
+
+      <!-- Selected Period Label Badge -->
+      <div class="period-status-bar">
+        <span class="period-badge-icon">📅</span>
+        <span id="report-period-label">Report Period: This Month</span>
+      </div>
+
+      <!-- Financial Period Summary Cards -->
+      <div class="reports-summary-grid">
+        <div class="card report-metric-card">
+          <div class="metric-icon-bubble income-bubble">📈</div>
+          <div class="metric-data">
+            <span class="report-metric-label">Period Income</span>
+            <span class="report-metric-value income-text" id="report-period-income">+₹0.00</span>
+          </div>
+        </div>
+
+        <div class="card report-metric-card">
+          <div class="metric-icon-bubble expense-bubble">📉</div>
+          <div class="metric-data">
+            <span class="report-metric-label">Period Expenses</span>
+            <span class="report-metric-value expense-text" id="report-period-expenses">-₹0.00</span>
+          </div>
+        </div>
+
+        <div class="card report-metric-card">
+          <div class="metric-icon-bubble savings-bubble">💰</div>
+          <div class="metric-data">
+            <span class="report-metric-label">Net Savings</span>
+            <span class="report-metric-value" id="report-net-savings">₹0.00</span>
+          </div>
+        </div>
+
+        <div class="card report-metric-card">
+          <div class="metric-icon-bubble rate-bubble">🎯</div>
+          <div class="metric-data">
+            <span class="report-metric-label">Savings Rate</span>
+            <span class="report-metric-value" id="report-savings-rate">0%</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Empty State Container for Reports (Shown when 0 transactions exist in period) -->
+      <div id="reports-empty-state" class="card reports-empty-card" style="display: none;">
+        <div class="empty-icon">📊</div>
+        <h3>No Transaction Records Found</h3>
+        <p>No income or expense entries were recorded for the selected time range. Add transactions or choose a different time period to view interactive charts and financial insights.</p>
+        <button type="button" class="btn-primary" data-view="transactions-view">
+          + Add Transaction
+        </button>
+      </div>
+
+      <!-- Visual Charts Grid: Income vs Expenses & Category Breakdown -->
+      <div id="reports-charts-container" class="reports-charts-grid">
+        <!-- Chart 1: Income vs Expenses Bar Chart -->
+        <section class="card chart-card">
+          <div class="card-header chart-card-header">
+            <div>
+              <h3>Income vs Expenses</h3>
+              <span class="card-subtitle-small">Cash inflow vs outflow comparison</span>
+            </div>
+            <!-- Sub-filter: Weekly vs Monthly Comparison -->
+            <div class="chart-granularity-toggle" role="group" aria-label="Comparison Interval">
+              <button type="button" class="granularity-btn active" id="granularity-weekly-btn">Weekly</button>
+              <button type="button" class="granularity-btn" id="granularity-monthly-btn">Monthly</button>
+            </div>
+          </div>
+          <div class="chart-canvas-wrapper">
+            <canvas id="income-expenses-chart"></canvas>
+          </div>
+        </section>
+
+        <!-- Chart 2: Category-wise Expenses Doughnut Chart -->
+        <section class="card chart-card">
+          <div class="card-header">
+            <div>
+              <h3>Category-Wise Expenses</h3>
+              <span class="card-subtitle-small">Distribution across expense categories</span>
+            </div>
+          </div>
+          <div class="chart-canvas-wrapper doughnut-wrapper">
+            <canvas id="category-expenses-chart"></canvas>
+          </div>
+          <!-- Detailed Category Breakdown Legend with Percentages -->
+          <div id="report-category-breakdown-list" class="category-breakdown-list">
+            <!-- Dynamically populated by JS -->
+          </div>
+        </section>
+      </div>
+
+      <!-- Financial Insights & Analytics Section -->
+      <section class="reports-insights-section">
+        <div class="card-header" style="margin-bottom: 12px;">
+          <h3>💡 Financial Insights & Analytics</h3>
+        </div>
+
+        <div class="insights-grid">
+          <!-- Insight Card 1: Top Spending Category -->
+          <div class="card insight-card">
+            <div class="insight-header">
+              <span class="insight-icon" id="insight-top-cat-icon">🏷️</span>
+              <span class="insight-title">Top Expense Category</span>
+            </div>
+            <p class="insight-main-val" id="insight-top-cat-name">None</p>
+            <p class="insight-sub-text" id="insight-top-cat-desc">No expense records found</p>
+          </div>
+
+          <!-- Insight Card 2: Average Spending -->
+          <div class="card insight-card">
+            <div class="insight-header">
+              <span class="insight-icon">📊</span>
+              <span class="insight-title">Average Spending</span>
+            </div>
+            <p class="insight-main-val" id="insight-avg-expense">₹0.00</p>
+            <p class="insight-sub-text" id="insight-avg-expense-desc">Average per transaction</p>
+          </div>
+
+          <!-- Insight Card 3: Actionable Advice / Financial Health -->
+          <div class="card insight-card insight-advice-card">
+            <div class="insight-header">
+              <span class="insight-icon" id="insight-advice-icon">🌟</span>
+              <span class="insight-title">Financial Health Advice</span>
+            </div>
+            <p class="insight-advice-text" id="insight-advice-message">
+              Log your daily transactions to receive automated financial health recommendations.
+            </p>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- ==========================================
+         VIEW 5: SAVINGS GOALS (Phase 4)
+         ========================================== -->
+    <div id="goals-view" class="view-section" style="display: none;">
+      <!-- Section Header -->
+      <div class="view-header">
+        <h2>Savings Goals</h2>
+        <p class="section-desc">Set financial targets, track your progress, and stay motivated to achieve your dreams.</p>
+      </div>
+
+      <!-- Goals Overview Metrics -->
+      <div class="reports-summary-grid goals-summary-grid">
+        <div class="card report-metric-card">
+          <div class="metric-icon-bubble" style="background-color: #ede9fe; color: var(--primary-purple);">🎯</div>
+          <div class="metric-data">
+            <span class="report-metric-label">Total Goals</span>
+            <span class="report-metric-value" id="goals-total-count">0</span>
+          </div>
+        </div>
+
+        <div class="card report-metric-card">
+          <div class="metric-icon-bubble" style="background-color: #e0f2fe; color: #0284c7;">💎</div>
+          <div class="metric-data">
+            <span class="report-metric-label">Total Target</span>
+            <span class="report-metric-value" id="goals-total-target">₹0.00</span>
+          </div>
+        </div>
+
+        <div class="card report-metric-card">
+          <div class="metric-icon-bubble income-bubble">💰</div>
+          <div class="metric-data">
+            <span class="report-metric-label">Total Saved</span>
+            <span class="report-metric-value income-text" id="goals-total-saved">₹0.00</span>
+          </div>
+        </div>
+
+        <div class="card report-metric-card">
+          <div class="metric-icon-bubble" style="background-color: #fef3c7; color: #d97706;">🏆</div>
+          <div class="metric-data">
+            <span class="report-metric-label">Goals Completed</span>
+            <span class="report-metric-value" id="goals-completed-count">0</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Content Grid: Form on Left, Goal Cards on Right -->
+      <div class="content-grid">
+        <!-- Goal Form Section -->
+        <section class="card form-section" id="goal-form-container">
+          <h2 id="goal-form-title">Create Savings Goal</h2>
+          <p class="section-desc">Define a target and milestone date to stay on track.</p>
+
+          <form id="goal-form">
+            <!-- Goal Name -->
+            <div class="form-group">
+              <label for="goal-name">Goal Name</label>
+              <input 
+                type="text" 
+                id="goal-name" 
+                name="goal-name" 
+                placeholder="e.g., Emergency Fund, New Laptop, Vacation" 
+                required
+              >
+            </div>
+
+            <!-- Target Amount -->
+            <div class="form-group">
+              <label for="goal-target-amount">Target Amount (₹)</label>
+              <input 
+                type="number" 
+                id="goal-target-amount" 
+                name="goal-target-amount" 
+                placeholder="e.g., 50000" 
+                step="0.01" 
+                min="0.01" 
+                required
+              >
+            </div>
+
+            <!-- Initial Saved Amount -->
+            <div class="form-group">
+              <label for="goal-saved-amount">Initial Saved Amount (₹)</label>
+              <input 
+                type="number" 
+                id="goal-saved-amount" 
+                name="goal-saved-amount" 
+                placeholder="0.00" 
+                step="0.01" 
+                min="0" 
+                value="0"
+                required
+              >
+              <small style="color: var(--text-secondary); font-size: 0.78rem; display: block; margin-top: 2px;">
+                Enter 0 if starting fresh. Cannot exceed target amount.
+              </small>
+            </div>
+
+            <!-- Target Date -->
+            <div class="form-group">
+              <label for="goal-target-date">Target Date</label>
+              <input 
+                type="date" 
+                id="goal-target-date" 
+                name="goal-target-date" 
+                required
+              >
+            </div>
+
+            <!-- Optional Description -->
+            <div class="form-group">
+              <label for="goal-description">Description <span style="font-weight: 400; color: var(--text-secondary);">(Optional)</span></label>
+              <textarea 
+                id="goal-description" 
+                name="goal-description" 
+                rows="3" 
+                placeholder="e.g., Save ₹5,000 every month to reach this milestone."
+              ></textarea>
+            </div>
+
+            <!-- Form Action Buttons -->
+            <div class="form-actions">
+              <button type="submit" class="btn-primary" id="save-goal-btn">
+                + Create Goal
+              </button>
+              <button type="button" class="btn-secondary" id="cancel-goal-edit-btn" style="display: none;">
+                Cancel Edit
+              </button>
+            </div>
+          </form>
+        </section>
+
+        <!-- Savings Goals List Section -->
+        <section class="card">
+          <div class="card-header">
+            <div>
+              <h2>Your Savings Goals</h2>
+              <span class="card-subtitle-small">Monitor visual progress and add contributions</span>
+            </div>
+          </div>
+
+          <div id="savings-goals-list" class="savings-goals-container">
+            <!-- Dynamically populated by JS -->
+          </div>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <!-- ==========================================
+       6. BUDGET EXCEEDED POP-UP ALERT MODAL
+       Appears when monthly overall or category budget is crossed
+       ========================================== -->
+  <div id="budget-alert-modal" class="modal-backdrop" aria-hidden="true" style="display: none;">
+    <div class="modal-card alert-modal-card" role="alertdialog" aria-labelledby="modal-alert-title">
+      <!-- Modal Header -->
+      <div class="modal-header alert-header">
+        <div class="alert-header-left">
+          <div class="alert-icon-circle">
+            <span class="alert-pulse"></span>
+            🚨
+          </div>
+          <div>
+            <h3 id="modal-alert-title" class="alert-title">Budget Limit Exceeded!</h3>
+            <p class="alert-subtitle">One or more of your monthly spending limits have been exceeded.</p>
+          </div>
+        </div>
+        <button type="button" class="modal-close-btn" id="close-alert-modal-btn" aria-label="Close alert modal">&times;</button>
+      </div>
+
+      <!-- Dynamic Alerts Container (Renders 1 or multiple alert cards) -->
+      <div id="budget-alerts-container" class="alert-cards-list">
+        <!-- Dynamically rendered by JavaScript -->
+      </div>
+
+      <!-- Warning Advice Box -->
+      <div class="alert-advice-box">
+        <span class="advice-icon">💡</span>
+        <p><strong>Financial Guidance:</strong> Review your expenses in the Transactions tab to reduce non-essential spending, or adjust your budget limits if your spending priorities have changed.</p>
+      </div>
+
+      <!-- Modal Footer Action -->
+      <div class="modal-footer">
+        <button type="button" class="btn-primary btn-alert-ack" id="ack-alert-modal-btn">
+          I Understand, Close Alert
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================
+       7. ADD SAVINGS (DEPOSIT) MODAL
+       Allows adding funds to a specific savings goal
+       ========================================== -->
+  <div id="add-savings-modal" class="modal-backdrop" aria-hidden="true" style="display: none;">
+    <div class="modal-card" role="dialog" aria-labelledby="add-savings-modal-title" style="max-width: 480px;">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div class="metric-icon-bubble income-bubble" style="width: 40px; height: 40px; font-size: 1.2rem;">💰</div>
+          <div>
+            <h3 id="add-savings-modal-title" style="font-size: 1.2rem; color: var(--text-primary);">Add Savings</h3>
+            <p id="add-savings-modal-subtitle" style="font-size: 0.82rem; color: var(--text-secondary);">Deposit funds towards your goal</p>
+          </div>
+        </div>
+        <button type="button" class="modal-close-btn" id="close-add-savings-modal-btn" aria-label="Close deposit modal">&times;</button>
+      </div>
+
+      <form id="add-savings-form" style="margin-top: 14px;">
+        <input type="hidden" id="deposit-goal-id">
+
+        <!-- Goal Status Snapshot Box -->
+        <div class="deposit-snapshot-box" id="deposit-snapshot-box">
+          <div style="display: flex; justify-content: space-between; font-size: 0.86rem; margin-bottom: 6px;">
+            <span>Current Saved: <strong class="income-text" id="deposit-current-saved">₹0.00</strong></span>
+            <span>Target: <strong id="deposit-target">₹0.00</strong></span>
+          </div>
+          <div style="font-size: 0.84rem; color: var(--text-secondary);">
+            Remaining to save: <strong class="expense-text" id="deposit-remaining">₹0.00</strong>
+          </div>
+        </div>
+
+        <!-- Deposit Amount Input -->
+        <div class="form-group" style="margin-top: 14px;">
+          <label for="deposit-amount">Amount to Add (₹)</label>
+          <input 
+            type="number" 
+            id="deposit-amount" 
+            name="deposit-amount" 
+            placeholder="e.g., 1000" 
+            step="0.01" 
+            min="0.01" 
+            required
+          >
+          <small id="deposit-hint" style="color: var(--text-secondary); font-size: 0.78rem; display: block; margin-top: 4px;">
+            Amount cannot exceed the remaining balance needed to reach this goal.
+          </small>
+        </div>
+
+        <div class="modal-footer" style="margin-top: 20px; gap: 10px;">
+          <button type="button" class="btn-secondary" id="cancel-deposit-btn" style="flex: 1;">Cancel</button>
+          <button type="submit" class="btn-primary" id="confirm-deposit-btn" style="flex: 1.5;">+ Confirm Deposit</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ==========================================
+       8. USER AUTHENTICATION MODAL (Phase 5)
+       Login & Registration with MongoDB Atlas
+       ========================================== -->
+  <div id="auth-modal" class="modal-backdrop" aria-hidden="true" style="display: none;">
+    <div class="modal-card auth-modal-card" role="dialog" aria-labelledby="auth-modal-title" style="max-width: 440px;">
+      
+      <!-- Modal Header -->
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div class="metric-icon-bubble" style="background-color: #ede9fe; color: var(--primary-purple); width: 40px; height: 40px; font-size: 1.2rem;">🔐</div>
+          <div>
+            <h3 id="auth-modal-title" style="font-size: 1.25rem; color: #1F2937;">SpendWise Account</h3>
+            <p id="auth-modal-subtitle" style="font-size: 0.82rem; color: #6B7280;">Secure cloud sync with MongoDB Atlas</p>
+          </div>
+        </div>
+        <button type="button" class="modal-close-btn" id="close-auth-modal-btn" aria-label="Close authentication modal">&times;</button>
+      </div>
+
+      <!-- Auth Tab Toggle (Login vs Register) -->
+      <div class="auth-tab-group" role="tablist">
+        <button type="button" class="auth-tab-btn active" id="auth-tab-login" role="tab" aria-selected="true">
+          Log In
+        </button>
+        <button type="button" class="auth-tab-btn" id="auth-tab-register" role="tab" aria-selected="false">
+          Create Account
+        </button>
+      </div>
+
+      <!-- Error / Feedback Alert Box -->
+      <div id="auth-alert-box" class="auth-alert-box" style="display: none;">
+        <span id="auth-alert-icon">⚠️</span>
+        <span id="auth-alert-text">Error message</span>
+      </div>
+
+      <!-- Form 1: Login Form -->
+      <form id="login-form" class="auth-form-body">
+        <div class="form-group">
+          <label for="login-email">Email Address</label>
+          <input 
+            type="email" 
+            id="login-email" 
+            name="email" 
+            placeholder="you@example.com" 
+            autocomplete="email" 
+            required
+          >
+        </div>
+
+        <div class="form-group">
+          <label for="login-password">Password</label>
+          <div class="password-field-wrapper">
+            <input 
+              type="password" 
+              id="login-password" 
+              name="password" 
+              placeholder="Enter your password" 
+              autocomplete="current-password" 
+              required
+            >
+            <button 
+              type="button" 
+              class="password-toggle-btn" 
+              data-toggle-target="login-password" 
+              aria-label="Show password" 
+              title="Show password" 
+              aria-pressed="false"
+            >
+              <span class="password-toggle-icon" aria-hidden="true">👁️</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="modal-footer" style="margin-top: 18px;">
+          <button type="submit" class="btn-primary" id="login-submit-btn" style="width: 100%;">
+            🔐 Log In
+          </button>
+        </div>
+
+        <p class="auth-switch-text">
+          Don't have an account? <a href="#" id="switch-to-register-link">Create an account</a>
+        </p>
+      </form>
+
+      <!-- Form 2: Register Form (Hidden by default) -->
+      <form id="register-form" class="auth-form-body" style="display: none;">
+        <div class="form-group">
+          <label for="register-name">Full Name</label>
+          <input 
+            type="text" 
+            id="register-name" 
+            name="name" 
+            placeholder="e.g., Alex Johnson" 
+            autocomplete="name" 
+            required
+          >
+        </div>
+
+        <div class="form-group">
+          <label for="register-email">Email Address</label>
+          <input 
+            type="email" 
+            id="register-email" 
+            name="email" 
+            placeholder="you@example.com" 
+            autocomplete="email" 
+            required
+          >
+        </div>
+
+        <div class="form-group">
+          <label for="register-password">Password <small style="font-weight: 400; color: #6B7280;">(Min 6 characters)</small></label>
+          <div class="password-field-wrapper">
+            <input 
+              type="password" 
+              id="register-password" 
+              name="password" 
+              placeholder="Create a strong password" 
+              autocomplete="new-password" 
+              minlength="6" 
+              required
+            >
+            <button 
+              type="button" 
+              class="password-toggle-btn" 
+              data-toggle-target="register-password" 
+              aria-label="Show password" 
+              title="Show password" 
+              aria-pressed="false"
+            >
+              <span class="password-toggle-icon" aria-hidden="true">👁️</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="register-confirm-password">Confirm Password</label>
+          <div class="password-field-wrapper">
+            <input 
+              type="password" 
+              id="register-confirm-password" 
+              name="confirm-password" 
+              placeholder="Re-enter your password" 
+              autocomplete="new-password" 
+              minlength="6" 
+              required
+            >
+            <button 
+              type="button" 
+              class="password-toggle-btn" 
+              data-toggle-target="register-confirm-password" 
+              aria-label="Show password" 
+              title="Show password" 
+              aria-pressed="false"
+            >
+              <span class="password-toggle-icon" aria-hidden="true">👁️</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="modal-footer" style="margin-top: 18px;">
+          <button type="submit" class="btn-primary" id="register-submit-btn" style="width: 100%;">
+            ✨ Create Account
+          </button>
+        </div>
+
+        <p class="auth-switch-text">
+          Already have an account? <a href="#" id="switch-to-login-link">Log in here</a>
+        </p>
+      </form>
+
+      <!-- Security Notice -->
+      <div class="auth-security-notice">
+        <span>🛡️</span> Passwords are encrypted with bcrypt before saving to MongoDB Atlas. Your data is isolated and private.
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ==========================================
+       5. FOOTER
+       ========================================== -->
+  <footer class="footer">
+    <p>&copy; SpendWise &bull; Personal Expense Tracker &bull; Learning Project</p>
+  </footer>
+
+  <!-- Chart.js Library (Local bundle) -->
+  <script src="chart.min.js"></script>
+  <!-- Frontend Runtime Configuration (SEC-FIND-01) -->
+  <script src="config.js"></script>
+  <!-- Link to external JavaScript file -->
+  <script src="script.js"></script>
+</body>
+</html>
+
